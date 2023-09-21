@@ -1,0 +1,32 @@
+GET http://localhost:3000/categories
+
+###
+
+POST http://localhost:3000/categories
+Content-Type: application/json
+
+{
+    "name": "Laptop"
+}
+
+###
+
+DELETE http://localhost:3000/categories/2
+
+###
+
+PATCH http://localhost:3000/categories/1
+Content-Type: application/json
+
+{
+    "name": "Smartwatch"
+}
+
+###
+
+PUT http://localhost:3000/categories/1
+Content-Type: application/json
+
+{
+    "name": "Computer"
+}

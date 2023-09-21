@@ -1,88 +1,175 @@
 import express from "express";
+import sqlite from "sqlite3";
+
+const db = new sqlite.Database("tgc.sqlite", (err) => {
+  if (err) {
+    console.error("Error : Could not connect to Database");
+  } else {
+    console.log("Database is connected !");
+  }
+});
+
+db.get("PRAGMA foreign_keys = ON;");
 
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
-const ads = [
-  {
-    id: 1,
-    title: "Bike to sell",
-    description:
-      "My bike is blue, working fine. I'm selling it because I've got a new one",
-    owner: "bike.seller@gmail.com",
-    price: 100,
-    picture:
-      "https://images.lecho.be/view?iid=dc:113129565&context=ONLINE&ratio=16/9&width=640&u=1508242455000",
-    location: "Paris",
-    createdAt: "2023-09-05T10:13:14.755Z",
-  },
-  {
-    id: 2,
-    title: "Car to sell",
-    description:
-      "My car is blue, working fine. I'm selling it because I've got a new one",
-    owner: "car.seller@gmail.com",
-    price: 10000,
-    picture:
-      "https://www.automobile-magazine.fr/asset/cms/34973/config/28294/apres-plusieurs-prototypes-la-bollore-bluecar-a-fini-par-devoiler-sa-version-definitive.jpg",
-    location: "Paris",
-    createdAt: "2023-10-05T10:14:15.922Z",
-  },
-];
-
-app.get("/", (req, res) => {
+app.get("/", (req: express.Request, res: express.Response) => {
   res.json({ message: "Hello there !" });
 });
 
-app.get("/ads", (req, res) => {
-  res.json(ads);
+app.get("/ads", (req: express.Request, res: express.Response) => {
+  db.all(
+    "SELECT Ad.*, Category.name FROM Ad LEFT JOIN Category ON Category.id = Ad.categoryId",
+    (err, rows) => {
+      res.send(rows);
+    }
+  );
 });
 
-app.post("/ads", (req, res) => {
-  const newAd = req.body;
-  newAd.id = ads.length + 1;
-  newAd.createdAt = new Date().toJSON();
-  ads.push(newAd);
-  res.send(newAd);
-});
-
-app.delete("/ads/:id", (req, res) => {
-  const adId = Number(req.params.id);
-  let done = false;
-  for (let i = 0; i < ads.length; i++) {
-    if (ads[i].id === adId) {
-      ads.splice(i, 1);
-      done = true;
-      break;
+app.get(
+  "/categories/:categoryId/ads",
+  (req: express.Request, res: express.Response) => {
+    try {
+      const categoryId = Number(req.params.categoryId);
+      const sql =
+        "SELECT Ad.*, Category.name FROM Ad INNER JOIN Category ON Category.id = Ad.categoryId WHERE Category.id = ?";
+      db.all(sql, [categoryId], (err, rows) => {
+        try {
+          res.send(rows);
+        } catch (error) {
+          res.status(500).json({ success: false, message: "GET went wrong!" });
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "GET went wrong!" });
     }
   }
-  if (done) {
-    res.send({ message: "Deleted !" });
-  } else {
-    res.status(404).send({ error: "This 'id' does not exist !" });
+);
+
+app.post("/ads", (req: express.Request, res: express.Response) => {
+  const timeNow = new Date().toISOString().split("T")[0];
+  const sql =
+    "INSERT INTO Ad (title, owner, price, location, createdAt, categoryId) VALUES (?, ?, ?, ?, ?, ?)";
+  db.run(sql, [
+    req.body.title,
+    req.body.owner,
+    req.body.price,
+    req.body.location,
+    timeNow,
+    req.body.categoryId,
+  ]);
+  res.sendStatus(204);
+});
+
+app.delete("/ads/:id", (req: express.Request, res: express.Response) => {
+  try {
+    const adId: number = Number(req.params.id);
+
+    const sql: string = "DELETE FROM Ad WHERE id = ?;";
+
+    db.run(sql, [adId]);
+
+    res.send({ success: true, message: "Deleted !" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "DELETE went wrong!" });
   }
 });
 
-app.patch("/ads/:id", (req, res) => {
-  const adId = Number(req.params.id);
-  const updatedAd = req.body;
-  let done = false;
-  for (let i = 0; i < ads.length; i++) {
-    if (ads[i].id === adId) {
-      const ad = ads[i];
-      Object.assign(ad, updatedAd);
-      done = true;
-      break;
-    }
-  }
-  if (done) {
-    res.send({ message: "Patched !" });
-  } else {
-    res.status(404).send({ error: "This 'id' does not exist !" });
+app.patch("/ads/:idAd", (req: express.Request, res: express.Response) => {
+  try {
+    const idAd = req.params.idAd;
+    const newUpdate = req.body;
+
+    let sql: string = "UPDATE Ad";
+
+    sql += ` SET ${Object.keys(newUpdate).join(" = ? , ")} = ?`;
+    sql += ` WHERE id = ${idAd};`;
+
+    const options: (string | number)[] = Object.values(newUpdate);
+
+    db.run(sql, options, (err) => {
+      if (err) {
+        console.error(err);
+        return res.sendStatus(500);
+      }
+      console.log("Patch successfull !");
+      res.sendStatus(204);
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "PATCH went wrong!" });
   }
 });
+
+app.put("/ads/:adId", (req: express.Request, res: express.Response) => {
+  try {
+    const updatedAd = req.body;
+    const adId = Number(req.params.adId);
+    const sql =
+      "UPDATE Ad SET title = ?, owner = ?, price = ?, location = ?, categoryId =? WHERE id = ?;";
+    db.run(sql, [
+      updatedAd.title,
+      updatedAd.owner,
+      updatedAd.price,
+      updatedAd.location,
+      updatedAd.categoryId,
+      adId,
+    ]);
+    res.sendStatus(204);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "PUT went wrong!" });
+  }
+});
+
+app.get("/categories", (req: express.Request, res: express.Response) => {
+  db.all("SELECT * FROM Category", (err, rows) => {
+    res.send(rows);
+  });
+});
+
+app.post("/categories", (req: express.Request, res: express.Response) => {
+  try {
+    const sql = "INSERT INTO Category (name) VALUES (?)";
+    db.run(sql, [req.body.name]);
+    res.sendStatus(204);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "POST went wrong!" });
+  }
+});
+
+app.put(
+  "/categories/:categoryId",
+  (req: express.Request, res: express.Response) => {
+    try {
+      const updatedCategory = req.body;
+      const categoryId = Number(req.params.categoryId);
+      const stmt = db.prepare("UPDATE Category SET name = ? WHERE id = ?;");
+      stmt.run([updatedCategory.name, categoryId]);
+      res.send({ message: "Updated !" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "PUT went wrong!" });
+    }
+  }
+);
+
+app.delete(
+  "/categories/:categoryId",
+  (req: express.Request, res: express.Response) => {
+    try {
+      const categoryId: number = Number(req.params.categoryId);
+
+      const sql: string = "DELETE FROM Category WHERE id = ?;";
+
+      db.run(sql, [categoryId]);
+
+      res.send({ success: true, message: "Deleted !" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "DELETE went wrong!" });
+    }
+  }
+);
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port} !`);
