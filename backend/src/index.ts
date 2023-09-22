@@ -1,15 +1,17 @@
+import "reflect-metadata";
 import express from "express";
-import sqlite from "sqlite3";
+import { DataSource } from "typeorm";
+import { Ad } from "./entities/ad";
+import { Category } from "./entities/category";
+import { validate } from "class-validator";
 
-const db = new sqlite.Database("tgc.sqlite", (err) => {
-  if (err) {
-    console.error("Error : Could not connect to Database");
-  } else {
-    console.log("Database is connected !");
-  }
+const dataSource = new DataSource({
+  type: "sqlite",
+  database: "./tgc.sqlite",
+  entities: [Ad, Category],
+  synchronize: true,
+  logging: true,
 });
-
-db.get("PRAGMA foreign_keys = ON;");
 
 const app = express();
 const port = 3000;
@@ -20,157 +22,140 @@ app.get("/", (req: express.Request, res: express.Response) => {
   res.json({ message: "Hello there !" });
 });
 
-app.get("/ads", (req: express.Request, res: express.Response) => {
-  db.all(
-    "SELECT Ad.*, Category.name FROM Ad LEFT JOIN Category ON Category.id = Ad.categoryId",
-    (err, rows) => {
-      res.send(rows);
-    }
-  );
+app.get("/ads", async (req: express.Request, res: express.Response) => {
+  try {
+    const ads = await Ad.find();
+    res.send(ads);
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
 });
 
 app.get(
   "/categories/:categoryId/ads",
-  (req: express.Request, res: express.Response) => {
-    try {
-      const categoryId = Number(req.params.categoryId);
-      const sql =
-        "SELECT Ad.*, Category.name FROM Ad INNER JOIN Category ON Category.id = Ad.categoryId WHERE Category.id = ?";
-      db.all(sql, [categoryId], (err, rows) => {
-        try {
-          res.send(rows);
-        } catch (error) {
-          res.status(500).json({ success: false, message: "GET went wrong!" });
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, message: "GET went wrong!" });
-    }
-  }
+  (req: express.Request, res: express.Response) => {}
 );
 
-app.post("/ads", (req: express.Request, res: express.Response) => {
-  const timeNow = new Date().toISOString().split("T")[0];
-  const sql =
-    "INSERT INTO Ad (title, owner, price, location, createdAt, categoryId) VALUES (?, ?, ?, ?, ?, ?)";
-  db.run(sql, [
-    req.body.title,
-    req.body.owner,
-    req.body.price,
-    req.body.location,
-    timeNow,
-    req.body.categoryId,
-  ]);
-  res.sendStatus(204);
-});
-
-app.delete("/ads/:id", (req: express.Request, res: express.Response) => {
+app.post("/ads", async (req: express.Request, res: express.Response) => {
   try {
-    const adId: number = Number(req.params.id);
+    const ad = new Ad();
+    ad.title = req.body.title;
+    ad.description = req.body.description;
+    ad.price = req.body.price;
 
-    const sql: string = "DELETE FROM Ad WHERE id = ?;";
-
-    db.run(sql, [adId]);
-
-    res.send({ success: true, message: "Deleted !" });
+    const errors = await validate(ad);
+    if (errors.length > 0) {
+      throw new Error(`Validation failed!`);
+    } else {
+      await dataSource.manager.save(ad);
+      res.send(ad);
+    }
   } catch (error) {
-    res.status(500).json({ success: false, message: "DELETE went wrong!" });
+    console.error(error);
+    res.sendStatus(500);
   }
 });
 
-app.patch("/ads/:idAd", (req: express.Request, res: express.Response) => {
+app.delete("/ads/:id", async (req: express.Request, res: express.Response) => {
   try {
-    const idAd = req.params.idAd;
-    const newUpdate = req.body;
+    const id = parseInt(req.params.id);
+    await Ad.delete({ id });
 
-    let sql: string = "UPDATE Ad";
-
-    sql += ` SET ${Object.keys(newUpdate).join(" = ? , ")} = ?`;
-    sql += ` WHERE id = ${idAd};`;
-
-    const options: (string | number)[] = Object.values(newUpdate);
-
-    db.run(sql, options, (err) => {
-      if (err) {
-        console.error(err);
-        return res.sendStatus(500);
-      }
-      console.log("Patch successfull !");
-      res.sendStatus(204);
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "PATCH went wrong!" });
-  }
-});
-
-app.put("/ads/:adId", (req: express.Request, res: express.Response) => {
-  try {
-    const updatedAd = req.body;
-    const adId = Number(req.params.adId);
-    const sql =
-      "UPDATE Ad SET title = ?, owner = ?, price = ?, location = ?, categoryId =? WHERE id = ?;";
-    db.run(sql, [
-      updatedAd.title,
-      updatedAd.owner,
-      updatedAd.price,
-      updatedAd.location,
-      updatedAd.categoryId,
-      adId,
-    ]);
     res.sendStatus(204);
   } catch (error) {
-    res.status(500).json({ success: false, message: "PUT went wrong!" });
+    console.error(error);
+    res.sendStatus(500);
   }
 });
 
-app.get("/categories", (req: express.Request, res: express.Response) => {
-  db.all("SELECT * FROM Category", (err, rows) => {
-    res.send(rows);
-  });
+app.patch("/ads/:id", (req: express.Request, res: express.Response) => {});
+
+app.put("/ads/:id", async (req: express.Request, res: express.Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ad = await Ad.findOneBy({ id });
+
+    if (ad) {
+      ad.title = req.body.title;
+      ad.description = req.body.description;
+      ad.price = req.body.price;
+
+      const errors = await validate(ad);
+      if (errors.length === 0) {
+        await dataSource.manager.save(ad);
+        res.send(ad);
+      } else {
+        throw new Error(`Validation failed!`);
+      }
+    } else {
+      res.sendStatus(404);
+    }
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/categories", async (req: express.Request, res: express.Response) => {
+  try {
+    const categories = await Category.find();
+    res.send(categories);
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
 });
 
 app.post("/categories", (req: express.Request, res: express.Response) => {
   try {
-    const sql = "INSERT INTO Category (name) VALUES (?)";
-    db.run(sql, [req.body.name]);
-    res.sendStatus(204);
+    const category = new Category();
+    category.name = req.body.name;
+    category.save();
+
+    res.send(category);
   } catch (error) {
-    res.status(500).json({ success: false, message: "POST went wrong!" });
+    console.error(error);
+    res.sendStatus(500);
   }
 });
 
 app.put(
-  "/categories/:categoryId",
-  (req: express.Request, res: express.Response) => {
+  "/categories/:id",
+  async (req: express.Request, res: express.Response) => {
     try {
-      const updatedCategory = req.body;
-      const categoryId = Number(req.params.categoryId);
-      const stmt = db.prepare("UPDATE Category SET name = ? WHERE id = ?;");
-      stmt.run([updatedCategory.name, categoryId]);
-      res.send({ message: "Updated !" });
+      const id = parseInt(req.params.id);
+      const category = await Category.findOneBy({ id });
+
+      if (category) {
+        category.name = req.body.name;
+        category.save();
+      }
+
+      res.send(category);
     } catch (error) {
-      res.status(500).json({ success: false, message: "PUT went wrong!" });
+      console.error(error);
+      res.sendStatus(500);
     }
   }
 );
 
 app.delete(
-  "/categories/:categoryId",
-  (req: express.Request, res: express.Response) => {
+  "/categories/:id",
+  async (req: express.Request, res: express.Response) => {
     try {
-      const categoryId: number = Number(req.params.categoryId);
+      const id = parseInt(req.params.id);
+      await Category.delete({ id });
 
-      const sql: string = "DELETE FROM Category WHERE id = ?;";
-
-      db.run(sql, [categoryId]);
-
-      res.send({ success: true, message: "Deleted !" });
+      res.sendStatus(204);
     } catch (error) {
-      res.status(500).json({ success: false, message: "DELETE went wrong!" });
+      console.error(error);
+      res.sendStatus(500);
     }
   }
 );
 
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port} !`);
+app.listen(port, async () => {
+  await dataSource.initialize();
+  console.log(`Server is running at 🚀 http://localhost:${port} 🚀`);
 });
