@@ -24,7 +24,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
 
 app.get("/ads", async (req: express.Request, res: express.Response) => {
   try {
-    const ads = await Ad.find();
+    const ads = await Ad.find({ relations: { category: true } });
     res.send(ads);
   } catch (error) {
     console.error(error);
@@ -43,6 +43,7 @@ app.post("/ads", async (req: express.Request, res: express.Response) => {
     ad.title = req.body.title;
     ad.description = req.body.description;
     ad.price = req.body.price;
+    ad.category = req.body.category;
 
     const errors = await validate(ad);
     if (errors.length > 0) {

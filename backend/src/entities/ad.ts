@@ -1,5 +1,12 @@
-import { Entity, BaseEntity, PrimaryGeneratedColumn, Column } from "typeorm";
+import {
+  Entity,
+  BaseEntity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+} from "typeorm";
 import { Length, Min, Max } from "class-validator";
+import { Category } from "./category";
 
 @Entity()
 export class Ad extends BaseEntity {
@@ -18,4 +25,7 @@ export class Ad extends BaseEntity {
   @Min(0)
   @Max(1000)
   price: number;
+
+  @ManyToOne(() => Category, (category) => category.ads)
+  category: Category;
 }

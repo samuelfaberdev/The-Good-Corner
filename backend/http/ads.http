@@ -12,10 +12,8 @@ Content-Type: application/json
 {
     "title": "Fun Car",
     "description": "My Funny Car is for sale",
-    "owner": "car.seller@gmail.com",
     "price": 300,
-    "location": "Paris",
-    "categoryId": 1
+    "category": 1
 }
 
 ###
