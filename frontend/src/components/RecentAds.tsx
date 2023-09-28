@@ -1,18 +1,9 @@
-import Link from "next/link";
-import AdCard, { AdCardProps } from "./AdCard";
+import AdCard, { AdType } from "./AdCard";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "@/config";
-import { type } from "os";
 
 export default function RecentAds() {
-  type AdType = {
-    id: number;
-    title: string;
-    imgSrc: string;
-    price: number;
-  };
-
   const [total, setTotal] = useState(0);
   const [ads, setAds] = useState([] as AdType[]);
 
@@ -35,9 +26,10 @@ export default function RecentAds() {
       <p>Prix total : {total}</p>
       <section className="recent-ads">
         {ads.map((ad) => (
-          <div key={ad.title}>
+          <div key={ad.id}>
             <AdCard
-              link={`${API_URL}/ads/${ad.id}`}
+              id={ad.id}
+              link={`/ads/${ad.id}`}
               imgSrc={ad.imgSrc}
               title={ad.title}
               price={ad.price}

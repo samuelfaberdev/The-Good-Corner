@@ -3,12 +3,10 @@ import axios from "axios";
 import Link from "next/link";
 import React from "react";
 import { useEffect, useState } from "react";
+import Category, { CategoryType } from "./Category";
 
 export default function Header() {
-  type CategoryType = {
-    id: number;
-    name: string;
-  };
+  
 
   const [categories, setCategories] = useState([] as CategoryType[]);
 
@@ -52,7 +50,7 @@ export default function Header() {
             </svg>
           </button>
         </form>
-        <Link href="/post-ad" className="button link-button">
+        <Link href="/ads/new" className="button link-button">
           <span className="mobile-short-label">Publier</span>
           <span className="desktop-long-label">Publier une annonce</span>
         </Link>
@@ -61,9 +59,7 @@ export default function Header() {
         {categories.map((category, index) => (
           <React.Fragment key={category.id}>
             {" • "}
-            <Link href="" className="category-navigation-link">
-              {category.name}
-            </Link>{" "}
+            <Category id={category.id} name={category.name} />{" "}
             {index < categories.length - 1 && " "}
             {index === categories.length - 1 && " • "}
           </React.Fragment>

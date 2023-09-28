@@ -1,11 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
 
-export type AdCardProps = {
-  link: string;
-  imgSrc: string;
+export type AdType = {
+  id: number;
   title: string;
+  imgSrc: string;
   price: number;
+};
+
+type AdCardProps = AdType & {
+  link: string;
 };
 
 export default function AdCard({ link, imgSrc, title, price }: AdCardProps) {
