@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import express from "express";
+import cors from "cors";
 import { DataSource } from "typeorm";
 import { Ad } from "./entities/ad";
 import { Category } from "./entities/category";
@@ -17,6 +18,7 @@ const app = express();
 const port = 5000;
 
 app.use(express.json());
+app.use(cors());
 
 app.get("/", (req: express.Request, res: express.Response) => {
   res.json({ message: "Hello there !" });
@@ -42,6 +44,7 @@ app.post("/ads", async (req: express.Request, res: express.Response) => {
     const ad = new Ad();
     ad.title = req.body.title;
     ad.description = req.body.description;
+    ad.imgSrc = req.body.imgSrc;
     ad.price = req.body.price;
     ad.category = req.body.category;
 

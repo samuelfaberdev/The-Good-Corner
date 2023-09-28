@@ -17,8 +17,11 @@ export class Ad extends BaseEntity {
   @Length(4, 100, { message: "Entre 4 et 100 caractères" })
   title: string;
 
+  @Column()
+  imgSrc: string;
+
   @Column({ nullable: true })
-  @Length(20, 500, { message: "Entre 20 et 500 caractères" })
+  @Length(10, 500, { message: "Entre 10 et 500 caractères" })
   description: string;
 
   @Column()
