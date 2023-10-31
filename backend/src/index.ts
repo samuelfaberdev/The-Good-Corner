@@ -1,165 +1,27 @@
 import "reflect-metadata";
-import express from "express";
-import cors from "cors";
-import { DataSource } from "typeorm";
-import { Ad } from "./entities/ad";
-import { Category } from "./entities/category";
-import { validate } from "class-validator";
+import { ApolloServer } from "@apollo/server";
+import { startStandaloneServer } from "@apollo/server/standalone";
+import { BookResolver } from "./resolvers/Books";
+import { buildSchema } from "type-graphql";
+import { AdResolver } from "./resolvers/Ads";
+import { dataSource } from "./datasource";
 
-const dataSource = new DataSource({
-  type: "sqlite",
-  database: "./tgc.sqlite",
-  entities: [Ad, Category],
-  synchronize: true,
-  logging: true,
-});
-
-const app = express();
 const port = 5000;
 
-app.use(express.json());
-app.use(cors());
+async function start() {
+  const schema = await buildSchema({
+    resolvers: [BookResolver, AdResolver],
+  });
 
-app.get("/", (req: express.Request, res: express.Response) => {
-  res.json({ message: "Hello there !" });
-});
+  const server = new ApolloServer({ schema });
 
-app.get("/ads", async (req: express.Request, res: express.Response) => {
-  try {
-    const ads = await Ad.find({ relations: { category: true } });
-    res.send(ads);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.get(
-  "/categories/:categoryId/ads",
-  (req: express.Request, res: express.Response) => {}
-);
-
-app.post("/ads", async (req: express.Request, res: express.Response) => {
-  try {
-    const ad = new Ad();
-    ad.title = req.body.title;
-    ad.description = req.body.description;
-    ad.imgSrc = req.body.imgSrc;
-    ad.price = req.body.price;
-    ad.category = req.body.category;
-
-    const errors = await validate(ad);
-    if (errors.length > 0) {
-      throw new Error(`Validation failed!`);
-    } else {
-      await dataSource.manager.save(ad);
-      res.send(ad);
-    }
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.delete("/ads/:id", async (req: express.Request, res: express.Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    await Ad.delete({ id });
-
-    res.sendStatus(204);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.patch("/ads/:id", (req: express.Request, res: express.Response) => {});
-
-app.put("/ads/:id", async (req: express.Request, res: express.Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    const ad = await Ad.findOneBy({ id });
-
-    if (ad) {
-      ad.title = req.body.title;
-      ad.description = req.body.description;
-      ad.price = req.body.price;
-
-      const errors = await validate(ad);
-      if (errors.length === 0) {
-        await dataSource.manager.save(ad);
-        res.send(ad);
-      } else {
-        throw new Error(`Validation failed!`);
-      }
-    } else {
-      res.sendStatus(404);
-    }
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.get("/categories", async (req: express.Request, res: express.Response) => {
-  try {
-    const categories = await Category.find();
-    res.send(categories);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.post("/categories", (req: express.Request, res: express.Response) => {
-  try {
-    const category = new Category();
-    category.name = req.body.name;
-    category.save();
-
-    res.send(category);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.put(
-  "/categories/:id",
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const category = await Category.findOneBy({ id });
-
-      if (category) {
-        category.name = req.body.name;
-        category.save();
-      }
-
-      res.send(category);
-    } catch (error) {
-      console.error(error);
-      res.sendStatus(500);
-    }
-  }
-);
-
-app.delete(
-  "/categories/:id",
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      await Category.delete({ id });
-
-      res.sendStatus(204);
-    } catch (error) {
-      console.error(error);
-      res.sendStatus(500);
-    }
-  }
-);
-
-app.listen(port, async () => {
   await dataSource.initialize();
-  console.log(`Server is running at 🚀 http://localhost:${port} 🚀`);
-});
+
+  const { url } = await startStandaloneServer(server, {
+    listen: { port },
+  });
+
+  console.log(`🚀  Server ready at: ${url}`);
+}
+
+start();
