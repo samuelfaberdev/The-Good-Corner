@@ -1,5 +1,5 @@
 import { Arg, Mutation, Query, Resolver } from "type-graphql";
-import { Ad, AdInput } from "../entities/Ad";
+import { Ad, AdCreateInput, AdUpdateInput } from "../entities/Ad";
 import { validate } from "class-validator";
 
 @Resolver(Ad)
@@ -14,7 +14,7 @@ export class AdResolver {
   async getAdById(@Arg("id") id: number): Promise<Ad> {
     const ad = await Ad.findOne({
       where: { id },
-      relations: { category: true },
+      relations: { category: true, tags: true },
     });
 
     if (!ad) {
@@ -24,7 +24,9 @@ export class AdResolver {
   }
 
   @Mutation(() => Ad)
-  async createAd(@Arg("data", () => AdInput) data: AdInput): Promise<Ad> {
+  async createAd(
+    @Arg("data", () => AdCreateInput) data: AdCreateInput
+  ): Promise<Ad> {
     const newAd = new Ad();
 
     Object.assign(newAd, data);
@@ -42,11 +44,11 @@ export class AdResolver {
   @Mutation(() => Ad)
   async updateAd(
     @Arg("id") id: number,
-    @Arg("data", () => AdInput) data: AdInput
-  ): Promise<Ad> {
+    @Arg("data", () => AdUpdateInput) data: AdUpdateInput
+  ): Promise<Ad | null> {
     const ad = await Ad.findOne({
       where: { id },
-      relations: { category: true },
+      relations: { category: true, tags: true },
     });
 
     if (!ad) {
@@ -58,7 +60,10 @@ export class AdResolver {
         throw new Error(`Validation failed!`);
       } else {
         await ad.save();
-        return ad;
+        return await Ad.findOne({
+          where: { id },
+          relations: { category: true, tags: true },
+        });
       }
     }
   }

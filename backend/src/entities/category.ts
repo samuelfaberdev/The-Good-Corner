@@ -7,21 +7,28 @@ import {
   OneToMany,
 } from "typeorm";
 import { Ad } from "./Ad";
-import { Field, ID, ObjectType } from "type-graphql";
+import { Field, ID, InputType, ObjectType } from "type-graphql";
 
 @Entity()
 @ObjectType()
 export class Category extends BaseEntity {
   @PrimaryGeneratedColumn()
   @Field(() => ID)
-  id: number;
+  id!: number;
 
   @Column()
   @Field()
   @Length(4, 100, { message: "Entre 4 et 100 caractères" })
-  name: string;
+  name!: string;
 
   @OneToMany(() => Ad, (ad) => ad.category)
   @Field(() => [Ad])
-  ads: Ad[];
+  ads!: Ad[];
+}
+
+@InputType()
+@Entity()
+export class CategoryInput extends BaseEntity {
+  @Field()
+  name!: string;
 }

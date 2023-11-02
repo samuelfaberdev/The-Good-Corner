@@ -4,14 +4,17 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  ManyToMany,
+  JoinTable,
 } from "typeorm";
 import { Length, Min, Max } from "class-validator";
 import { Category } from "./Category";
 import { Field, ID, InputType, Int, ObjectType } from "type-graphql";
 import { ObjectID } from "./ObjectId";
+import { Tag } from "./Tag";
 
-@ObjectType()
 @Entity()
+@ObjectType()
 export class Ad extends BaseEntity {
   @PrimaryGeneratedColumn()
   @Field(() => ID)
@@ -40,11 +43,38 @@ export class Ad extends BaseEntity {
   @ManyToOne(() => Category, (category) => category.ads)
   @Field(() => Category, { nullable: true })
   category!: Category;
+
+  @ManyToMany(() => Tag, (tag) => tag.ads)
+  @JoinTable()
+  @Field(() => [Tag], { nullable: true })
+  tags!: Tag[];
 }
 
 @InputType()
 @Entity()
-export class AdInput extends BaseEntity {
+export class AdCreateInput extends BaseEntity {
+  @Field()
+  title: string;
+
+  @Field({ nullable: true })
+  imgSrc: string;
+
+  @Field()
+  description: string;
+
+  @Field(() => Int)
+  price: number;
+
+  @Field({ nullable: true })
+  category: ObjectID;
+
+  @Field({ nullable: true })
+  tags: ObjectID;
+}
+
+@InputType()
+@Entity()
+export class AdUpdateInput extends BaseEntity {
   @Field({ nullable: true })
   title: string;
 
@@ -59,4 +89,7 @@ export class AdInput extends BaseEntity {
 
   @Field({ nullable: true })
   category: ObjectID;
+
+  @Field(() => [ObjectID], { nullable: true })
+  tags: ObjectID[];
 }
