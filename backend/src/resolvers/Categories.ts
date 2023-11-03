@@ -40,4 +40,18 @@ export class CategoryResolver {
       throw new Error(`Validation failed!`);
     }
   }
+
+  @Mutation(() => String)
+  async deleteCategory(@Arg("id") id: number): Promise<String> {
+    const category = await Category.findOne({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new Error(`Category with 'id = ${id}' does not exist !`);
+    } else {
+      category.remove();
+      return `Category with 'id = ${id}' deleted !`;
+    }
+  }
 }

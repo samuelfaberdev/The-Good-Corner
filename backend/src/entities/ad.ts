@@ -26,7 +26,7 @@ export class Ad extends BaseEntity {
   title!: string;
 
   @Column({ nullable: true })
-  @Field()
+  @Field({ nullable: true })
   imgSrc!: string;
 
   @Column({ nullable: true })
@@ -51,7 +51,6 @@ export class Ad extends BaseEntity {
 }
 
 @InputType()
-@Entity()
 export class AdCreateInput extends BaseEntity {
   @Field()
   title: string;
@@ -73,7 +72,6 @@ export class AdCreateInput extends BaseEntity {
 }
 
 @InputType()
-@Entity()
 export class AdUpdateInput extends BaseEntity {
   @Field({ nullable: true })
   title: string;

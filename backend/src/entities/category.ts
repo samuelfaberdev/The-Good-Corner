@@ -27,7 +27,6 @@ export class Category extends BaseEntity {
 }
 
 @InputType()
-@Entity()
 export class CategoryInput extends BaseEntity {
   @Field()
   name!: string;

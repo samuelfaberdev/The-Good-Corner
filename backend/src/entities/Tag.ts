@@ -27,7 +27,6 @@ export class Tag extends BaseEntity {
 }
 
 @InputType()
-@Entity()
 export class TagInput extends BaseEntity {
   @Field()
   name!: string;
