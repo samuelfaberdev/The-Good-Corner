@@ -6,6 +6,8 @@ export type AdType = {
   title: string;
   imgSrc: string;
   price: number;
+  description: string;
+  category?: { id: number } | null;
 };
 
 type AdCardProps = AdType & {

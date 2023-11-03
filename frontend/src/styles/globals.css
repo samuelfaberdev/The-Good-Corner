@@ -163,6 +163,11 @@ h1 {
   gap: 1rem;
 }
 
+.ad-button {
+  display: flex;
+  justify-content: space-between;
+}
+
 @media screen and (min-width: 720px) {
   .mobile-short-label {
     display: none;

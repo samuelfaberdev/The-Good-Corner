@@ -1,40 +1,41 @@
-import { CategoryType } from "@/components/Category";
 import Layout from "@/components/Layout";
-import { API_URL } from "@/config";
-import axios from "axios";
-import { FormEvent, useEffect, useState } from "react";
+import { AdType } from "@/components/AdCard";
+import { CategoryType } from "@/components/Category";
+import { getAds } from "@/graphql/getAds";
+import { getCategories } from "@/graphql/getCategories";
+import { mutationCreateAd } from "@/graphql/mutationCreateAd";
+import { useMutation, useQuery } from "@apollo/client";
+import { FormEvent, useState } from "react";
 
 export default function AdDetailComponent() {
-  const [categories, setCategories] = useState([] as CategoryType[]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imgSrc, setImgSrc] = useState("");
   const [price, setPrice] = useState(0);
   const [categoryId, setCategoryId] = useState<number | null>();
 
-  async function fetchCategories() {
-    try {
-      const result = await axios.get(`${API_URL}/categories`);
-      setCategories(result.data);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const { loading, error, data } = useQuery(getCategories);
+  const [doCreate] = useMutation(mutationCreateAd, {
+    refetchQueries: [getAds],
+  });
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error : {error.message}</p>;
+
+  const categories: CategoryType[] = data.getCategories;
+
+  const newAd: Omit<AdType, "id"> = {
+    title,
+    description,
+    imgSrc,
+    price,
+    category: { id: Number(categoryId) },
+  };
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    axios.post(`${API_URL}/ads`, {
-      title,
-      description,
-      imgSrc,
-      price,
-      category: categoryId,
-    });
+    doCreate({ variables: { data: newAd } });
   }
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   return (
     <>

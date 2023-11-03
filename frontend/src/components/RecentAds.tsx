@@ -1,24 +1,31 @@
 import AdCard, { AdType } from "./AdCard";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_URL } from "@/config";
+import { useState } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import { getAds } from "@/graphql/getAds";
+import { mutationDeleteAd } from "@/graphql/mutationDeleteAd";
 
 export default function RecentAds() {
   const [total, setTotal] = useState(0);
-  const [ads, setAds] = useState([] as AdType[]);
 
-  async function fetchAds() {
-    try {
-      const result = await axios.get(`${API_URL}/ads`);
-      setAds(result.data);
-    } catch (error) {
-      console.error(error);
-    }
+  const { loading, error, data } = useQuery(getAds);
+  const [doDelete] = useMutation(mutationDeleteAd, {
+    refetchQueries: [getAds],
+  });
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error : {error.message}</p>;
+
+  const ads: AdType[] = data.getAds;
+
+  console.log(ads);
+
+  async function DeleteAd(adId: number) {
+    await doDelete({
+      variables: {
+        deleteAdId: Number(adId),
+      },
+    });
   }
-
-  useEffect(() => {
-    fetchAds();
-  }, []);
 
   return (
     <>
@@ -30,18 +37,24 @@ export default function RecentAds() {
             <AdCard
               id={ad.id}
               link={`/ads/${ad.id}`}
-              imgSrc={ad.imgSrc}
+              imgSrc={ad.imgSrc ? ad.imgSrc : ""}
               title={ad.title}
               price={ad.price}
+              description={ad.description}
             />
-            <button
-              className="button"
-              onClick={() => {
-                setTotal(total + ad.price);
-              }}
-            >
-              Ajouter au total
-            </button>
+            <div className="ad-button">
+              <button
+                className="button"
+                onClick={() => {
+                  setTotal(total + ad.price);
+                }}
+              >
+                Ajouter au total
+              </button>
+              <button className="button" onClick={() => DeleteAd(ad.id)}>
+                Supprimer
+              </button>
+            </div>
           </div>
         ))}
       </section>
