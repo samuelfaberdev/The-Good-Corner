@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const getOneAd = gql`
-  query getOneAd($getAdByIdId: Float!) {
-    getAdById(id: $getAdByIdId) {
+  query getOneAd($getAdById: Float!) {
+    getAdById(id: $getAdById) {
       id
       title
       price
