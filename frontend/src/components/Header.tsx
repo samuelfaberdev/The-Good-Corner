@@ -26,8 +26,8 @@ export default function Header() {
 
   const Signout = async () => {
     try {
-      await doSignout();
       await client.resetStore();
+      await doSignout();
       router.replace("/");
     } catch {}
   };
