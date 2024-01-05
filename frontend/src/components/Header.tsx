@@ -1,27 +1,36 @@
-import { API_URL } from "@/config";
-import axios from "axios";
 import Link from "next/link";
 import React from "react";
-import { useEffect, useState } from "react";
 import Category, { CategoryType } from "./Category";
+import { useMutation, useQuery } from "@apollo/client";
+import { getCategories } from "@/graphql/getCategories";
+import { getMe } from "@/graphql/getMe";
+import { mutationSignout } from "@/graphql/mutationSignout";
+import { useRouter } from "next/router";
 
 export default function Header() {
-  
+  const { loading, error, data } = useQuery(getCategories);
+  const [doSignout] = useMutation(mutationSignout, {
+    refetchQueries: [{ query: getMe }],
+  });
+  const { client, data: dataMe, error: errorMe } = useQuery(getMe);
+  const router = useRouter();
 
-  const [categories, setCategories] = useState([] as CategoryType[]);
+  const me = errorMe ? undefined : dataMe;
 
-  async function fetchCategories() {
+  console.log(errorMe, dataMe);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error : {error.message}</p>;
+
+  const categories: CategoryType[] = data.getCategories;
+
+  const Signout = async () => {
     try {
-      const result = await axios.get(`${API_URL}/categories`);
-      setCategories(result.data);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+      await doSignout();
+      await client.resetStore();
+      router.replace("/");
+    } catch {}
+  };
 
   return (
     <header className="header">
@@ -50,6 +59,12 @@ export default function Header() {
             </svg>
           </button>
         </form>
+        {me && (
+          <button onClick={Signout} className="button link-button">
+            <span className="mobile-short-label">Déconnexion</span>
+            <span className="desktop-long-label">Déconnexion</span>
+          </button>
+        )}
         <Link href="/ads/new" className="button link-button">
           <span className="mobile-short-label">Publier</span>
           <span className="desktop-long-label">Publier une annonce</span>

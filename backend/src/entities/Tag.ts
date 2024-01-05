@@ -1,17 +1,17 @@
-import { Length } from "class-validator";
+import { Field, ID, InputType, ObjectType } from "type-graphql";
 import {
-  Entity,
   BaseEntity,
-  PrimaryGeneratedColumn,
   Column,
-  OneToMany,
+  Entity,
+  ManyToMany,
+  PrimaryGeneratedColumn,
 } from "typeorm";
 import { Ad } from "./Ad";
-import { Field, ID, InputType, ObjectType } from "type-graphql";
+import { Length } from "class-validator";
 
 @Entity()
 @ObjectType()
-export class Category extends BaseEntity {
+export class Tag extends BaseEntity {
   @PrimaryGeneratedColumn()
   @Field(() => ID)
   id!: number;
@@ -21,13 +21,13 @@ export class Category extends BaseEntity {
   @Length(4, 100, { message: "Entre 4 et 100 caractères" })
   name!: string;
 
-  @OneToMany(() => Ad, (ad) => ad.category)
-  @Field(() => [Ad])
+  @ManyToMany(() => Ad, (ad) => ad.tags)
+  @Field(() => [Ad], { nullable: true })
   ads!: Ad[];
 }
 
 @InputType()
-export class CategoryInput extends BaseEntity {
+export class TagInput extends BaseEntity {
   @Field()
   name!: string;
 }

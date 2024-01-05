@@ -1,165 +1,58 @@
 import "reflect-metadata";
-import express from "express";
+import "dotenv/config";
+import { ApolloServer } from "@apollo/server";
+import { buildSchema } from "type-graphql";
+import { dataSource } from "./datasource";
+import { AdResolver } from "./resolvers/Ads";
+import { TagResolver } from "./resolvers/Tags";
+import { CategoryResolver } from "./resolvers/Categories";
+import { UserResolver } from "./resolvers/Users";
+import { ContextType, customAuthChecker } from "./auth";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import cors from "cors";
-import { DataSource } from "typeorm";
-import { Ad } from "./entities/ad";
-import { Category } from "./entities/category";
-import { validate } from "class-validator";
+import express from "express";
+import http from "http";
 
-const dataSource = new DataSource({
-  type: "sqlite",
-  database: "./tgc.sqlite",
-  entities: [Ad, Category],
-  synchronize: true,
-  logging: true,
-});
-
-const app = express();
 const port = 5000;
 
-app.use(express.json());
-app.use(cors());
+async function start() {
+  const app = express();
 
-app.get("/", (req: express.Request, res: express.Response) => {
-  res.json({ message: "Hello there !" });
-});
+  const httpServer = http.createServer(app);
 
-app.get("/ads", async (req: express.Request, res: express.Response) => {
-  try {
-    const ads = await Ad.find({ relations: { category: true } });
-    res.send(ads);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
+  const schema = await buildSchema({
+    resolvers: [AdResolver, TagResolver, CategoryResolver, UserResolver],
+    authChecker: customAuthChecker,
+  });
 
-app.get(
-  "/categories/:categoryId/ads",
-  (req: express.Request, res: express.Response) => {}
-);
+  const server = new ApolloServer<ContextType>({
+    schema,
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  });
 
-app.post("/ads", async (req: express.Request, res: express.Response) => {
-  try {
-    const ad = new Ad();
-    ad.title = req.body.title;
-    ad.description = req.body.description;
-    ad.imgSrc = req.body.imgSrc;
-    ad.price = req.body.price;
-    ad.category = req.body.category;
-
-    const errors = await validate(ad);
-    if (errors.length > 0) {
-      throw new Error(`Validation failed!`);
-    } else {
-      await dataSource.manager.save(ad);
-      res.send(ad);
-    }
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.delete("/ads/:id", async (req: express.Request, res: express.Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    await Ad.delete({ id });
-
-    res.sendStatus(204);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.patch("/ads/:id", (req: express.Request, res: express.Response) => {});
-
-app.put("/ads/:id", async (req: express.Request, res: express.Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    const ad = await Ad.findOneBy({ id });
-
-    if (ad) {
-      ad.title = req.body.title;
-      ad.description = req.body.description;
-      ad.price = req.body.price;
-
-      const errors = await validate(ad);
-      if (errors.length === 0) {
-        await dataSource.manager.save(ad);
-        res.send(ad);
-      } else {
-        throw new Error(`Validation failed!`);
-      }
-    } else {
-      res.sendStatus(404);
-    }
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.get("/categories", async (req: express.Request, res: express.Response) => {
-  try {
-    const categories = await Category.find();
-    res.send(categories);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.post("/categories", (req: express.Request, res: express.Response) => {
-  try {
-    const category = new Category();
-    category.name = req.body.name;
-    category.save();
-
-    res.send(category);
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-
-app.put(
-  "/categories/:id",
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const category = await Category.findOneBy({ id });
-
-      if (category) {
-        category.name = req.body.name;
-        category.save();
-      }
-
-      res.send(category);
-    } catch (error) {
-      console.error(error);
-      res.sendStatus(500);
-    }
-  }
-);
-
-app.delete(
-  "/categories/:id",
-  async (req: express.Request, res: express.Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      await Category.delete({ id });
-
-      res.sendStatus(204);
-    } catch (error) {
-      console.error(error);
-      res.sendStatus(500);
-    }
-  }
-);
-
-app.listen(port, async () => {
   await dataSource.initialize();
-  console.log(`Server is running at 🚀 http://localhost:${port} 🚀`);
-});
+
+  await server.start();
+
+  app.use(
+    "/",
+    cors<cors.CorsRequest>({
+      origin: process.env.FRONT_URL,
+      credentials: true,
+    }),
+    express.json({ limit: "50mb" }),
+    expressMiddleware(server, {
+      context: async ({ req, res }) => ({
+        req,
+        res,
+      }),
+    })
+  );
+
+  await new Promise<void>((resolve) => httpServer.listen({ port }, resolve));
+  console.log(`🚀🚀🚀 Server ready at http://localhost:${port}/ 🚀🚀🚀`);
+  console.log(`Frontend is running at : ${process.env.FRONT_URL}`);
+}
+
+start();
