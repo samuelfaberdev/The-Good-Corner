@@ -9,7 +9,7 @@ export default function AdDetailComponent() {
 
   const { loading, error, data } = useQuery(getOneAd, {
     variables: {
-      getAdByIdId: Number(router.query.id),
+      getAdById: Number(router.query.id),
     },
   });
 
