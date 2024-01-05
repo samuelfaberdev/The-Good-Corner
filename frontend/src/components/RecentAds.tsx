@@ -13,11 +13,9 @@ export default function RecentAds() {
   });
 
   if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error : {error.message}</p>;
+  if (error) return <p>Erreur : {error.message}</p>;
 
   const ads: AdType[] = data.getAds;
-
-  console.log(ads);
 
   async function DeleteAd(adId: number) {
     await doDelete({
