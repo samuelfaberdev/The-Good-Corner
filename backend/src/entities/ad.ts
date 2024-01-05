@@ -6,12 +6,14 @@ import {
   ManyToOne,
   ManyToMany,
   JoinTable,
+  OneToMany,
 } from "typeorm";
 import { Length, Min, Max } from "class-validator";
 import { Category } from "./Category";
 import { Field, ID, InputType, Int, ObjectType } from "type-graphql";
 import { ObjectID } from "./ObjectId";
 import { Tag } from "./Tag";
+import { User } from "./User";
 
 @Entity()
 @ObjectType()
@@ -48,6 +50,10 @@ export class Ad extends BaseEntity {
   @JoinTable()
   @Field(() => [Tag], { nullable: true })
   tags!: Tag[];
+
+  @ManyToOne(() => User, (user) => user.ads)
+  @Field(() => User)
+  createdBy!: User;
 }
 
 @InputType()

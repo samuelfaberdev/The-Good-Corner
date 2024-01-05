@@ -1,12 +1,15 @@
-import { Arg, Mutation, Query, Resolver } from "type-graphql";
+import { Arg, Authorized, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import { Ad, AdCreateInput, AdUpdateInput } from "../entities/Ad";
 import { validate } from "class-validator";
+import { ContextType } from "../auth";
 
 @Resolver(Ad)
 export class AdResolver {
   @Query(() => [Ad])
   async getAds() {
-    const ads = await Ad.find({ relations: { category: true } });
+    const ads = await Ad.find({
+      relations: { category: true, tags: true, createdBy: true },
+    });
     return ads;
   }
 
@@ -14,7 +17,7 @@ export class AdResolver {
   async getAdById(@Arg("id") id: number): Promise<Ad> {
     const ad = await Ad.findOne({
       where: { id },
-      relations: { category: true, tags: true },
+      relations: { category: true, tags: true, createdBy: true },
     });
 
     if (!ad) {
@@ -23,13 +26,17 @@ export class AdResolver {
     return ad;
   }
 
+  @Authorized()
   @Mutation(() => Ad)
   async createAd(
+    @Ctx() context: ContextType,
     @Arg("data", () => AdCreateInput) data: AdCreateInput
   ): Promise<Ad> {
     const newAd = new Ad();
 
-    Object.assign(newAd, data);
+    Object.assign(newAd, data, {
+      createdBy: context.user,
+    });
 
     const errors = await validate(newAd);
 
@@ -41,19 +48,22 @@ export class AdResolver {
     }
   }
 
+  @Authorized()
   @Mutation(() => Ad)
   async updateAd(
+    @Ctx() context: ContextType,
     @Arg("id") id: number,
     @Arg("data", () => AdUpdateInput) data: AdUpdateInput
   ): Promise<Ad | null> {
     const ad = await Ad.findOne({
       where: { id },
-      relations: { category: true, tags: true },
+      relations: { category: true, tags: true, createdBy: true },
     });
 
-    if (!ad) {
-      throw new Error("No Ad with this 'id' !");
-    } else {
+    if (context.user?.id !== ad?.createdBy.id) {
+      throw new Error("User not authorized to update this ad!");
+    }
+    if (ad) {
       Object.assign(ad, data);
       const errors = await validate(ad);
       if (errors.length > 0) {
@@ -65,6 +75,8 @@ export class AdResolver {
           relations: { category: true, tags: true },
         });
       }
+    } else {
+      throw new Error("No Ad with this 'id' !");
     }
   }
 
